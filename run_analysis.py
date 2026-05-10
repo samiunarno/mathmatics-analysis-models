@@ -1,7 +1,5 @@
 import subprocess
 import sys
-
-# install anything that's missing before we go further
 needed = ["pandas", "numpy", "matplotlib", "seaborn", "scikit-learn", "openpyxl", "scipy"]
 for pkg in needed:
     try:
