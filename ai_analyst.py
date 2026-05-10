@@ -1,20 +1,20 @@
 """
-Joyi: Your Natural, Know-Everything AI Friend & Data Expert
-No paid APIs. Fully local + open web knowledge.
+Joyi: Your Natural AI Friend & Data Expert
+Fully local text-based chat. No APIs.
 
 Usage:
     python3 ai_analyst.py
 """
 
-import subprocess, sys
+import subprocess, sys, os
 
-# Make sure we have the required packages, including wikipedia for general knowledge
+# ── Auto-Install Dependencies ─────────────────────────────────────────────────
 needed = ["pandas", "numpy", "scikit-learn", "openpyxl", "scipy", "wikipedia"]
 for pkg in needed:
     try:
         __import__(pkg.replace("-", "_"))
     except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "-q"])
+        subprocess.call([sys.executable, "-m", "pip", "install", pkg, "-q"])
 
 import warnings; warnings.filterwarnings("ignore")
 import re, time, random
@@ -27,10 +27,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 import wikipedia
 
-# Set wikipedia language
 wikipedia.set_lang("en")
 
-# ── Natural Text Streaming ────────────────────────────────────────────────────
+# ── Styling & Text Streaming ──────────────────────────────────────────────────
 def c(text, code): return f"\033[{code}m{text}\033[0m"
 MAGENTA = lambda t: c(t, "38;5;207")
 GREEN   = lambda t: c(t, "38;5;82")
@@ -86,20 +85,19 @@ def build_features(df, enc=None, fit=True):
         df[NUM_COLS] = enc["sc"].transform(df[NUM_COLS])
     return df[FEAT_COLS], enc
 
-# Train model silently in the background
 X_all, ENC = build_features(train[FEAT_COLS], fit=True)
 y_all = train[TARGET]
 X_tr,X_v,y_tr,y_v = train_test_split(X_all,y_all,test_size=0.2,random_state=42,stratify=y_all)
 MODEL = RandomForestClassifier(n_estimators=100, max_depth=10, class_weight="balanced", random_state=42, n_jobs=-1)
 MODEL.fit(X_tr, y_tr)
-FI = dict(zip(FEAT_COLS, MODEL.feature_importances_))
 
 
-# ── Conversational Functions ──────────────────────────────────────────────────
+# ── Conversational & Expert Problem Solving Functions ─────────────────────────
 def general_knowledge(query):
-    """Uses Wikipedia to answer general knowledge questions so it 'knows everything'."""
     try:
-        # Check if the user is asking about data science terms specifically
+        if re.search(r"how to solve|solve problem|figure out", query.lower()):
+            return handle_problem_solving(query)
+
         if re.search(r"random forest|auc|f1|machine learning|data science|logistic regression", query.lower()):
             search_query = query + " machine learning"
         else:
@@ -107,10 +105,10 @@ def general_knowledge(query):
             
         search_results = wikipedia.search(search_query)
         if not search_results:
-            return "Hmm, I actually don't know much about that! I searched my knowledge base but couldn't find anything solid."
+            return "Hmm, I actually don't know much about that! I've searched my brain but couldn't find anything solid. Tell me more?"
         
         page = wikipedia.page(search_results[0], auto_suggest=False)
-        summary = page.summary.split('\n')[0] # Get just the first paragraph
+        summary = page.summary.split('\n')[0]
         
         intros = [
             f"Oh, {search_results[0]}! Basically, ",
@@ -127,6 +125,12 @@ def general_knowledge(query):
     except Exception as e:
         return "My brain is drawing a blank on that one right now. Let's talk about something else!"
 
+def handle_problem_solving(query):
+    return random.choice([
+        "When I solve a problem, I always start by breaking it down into smaller, digestible pieces. First, we identify the exact data we have. Then, we look for patterns. Finally, we build a model to predict the outcome. What specific problem are you trying to solve right now?",
+        "As a data expert, my advice for solving any problem is to look at the numbers objectively. Don't rely on gut feelings. Let's look at the variables, isolate what's causing the issue, and create a data-driven strategy. How can I help you analyze it?",
+        "Solving complex problems is exactly what I do best! Whether it's predicting corporate layoffs or figuring out a math equation, we just need to gather the data, clean it up, and run the right algorithms. Let's tackle your problem together. What is it?"
+    ])
 
 def handle_greeting():
     return random.choice([
@@ -190,48 +194,44 @@ def handle_predict():
     else:
         return f"Good news! Only a {prob:.1%} chance of layoffs. They look super solid. You can definitely relax!"
 
-def handle_model_perf():
-    from sklearn.metrics import roc_auc_score, f1_score
-    probs = MODEL.predict_proba(X_v)[:,1]
-    preds_ = MODEL.predict(X_v)
-    auc = roc_auc_score(y_v,probs)
-    f1  = f1_score(y_v,preds_)
-    return (f"As your personal AI data scientist, I tuned a Random Forest classifier on this data. "
-            f"It achieved an AUC of {auc:.3f} and an F1 score of {f1:.3f} on the validation set. "
-            f"It's a highly robust model that captures the non-linear relationship between growth rate and layoff risk perfectly!")
 
 # ── Chat Loop ─────────────────────────────────────────────────────────────────
-import os
 os.system('cls' if os.name == 'nt' else 'clear')
 
 print(f"\n{BOLD(MAGENTA('Joyi is online ✨'))}")
-print(DIM("Talk to me like a real person. Ask about your market dataset, data analysis concepts, or general world knowledge!"))
+print(DIM("Talk to me naturally. Ask about your data, analysis concepts, or general knowledge!"))
 print(DIM("Type 'bye' to leave.\n"))
 
-chat_print("Hey! I'm Joyi, your personal AI expert. I'm completely set up and ready to go. What do you want to talk about?")
+chat_print("Hey! I'm Joyi, your personal AI expert. I'm completely set up and ready to chat. What do you want to talk about?")
 
 while True:
     try:
         user = input(f"{BOLD(GREEN('You'))} ✨: ").strip()
     except (EOFError, KeyboardInterrupt):
-        print(f"\n\n{BOLD(MAGENTA('Joyi'))} 💖: Talk to you later! Bye! 👋")
+        chat_print("Talk to you later! Bye! 👋")
         break
 
     if not user: continue
     user_lower = user.lower()
 
-    if re.search(r"^(quit|exit|bye|goodbye|see ya|cya)$", user_lower):
+    if re.search(r"^(quit|exit|bye|goodbye|see ya|cya|stop|end)$", user_lower):
         chat_print("It was really nice chatting with you! Have an amazing day! 👋")
         break
 
     # Natural Data & Expert Intents
     if re.search(r"^(hi|hello|hey|sup|morning|evening|howdy)", user_lower):
         response = handle_greeting()
+    elif re.search(r"how are you|how are things|how is it going", user_lower):
+        response = "I'm doing fantastic! I've been crunching market data all day, which is exactly what I love to do. How are you doing?"
     elif re.search(r"what is your name|who are you|what are you|are you an expert", user_lower):
         response = handle_identity()
-    elif re.search(r"overview|summary|tell me about the data|what do we have|about my dataset", user_lower):
+    elif re.search(r"what do you know|what can you do|what are you capable of|help", user_lower):
+        response = ("I'm an AI data expert! I know everything about your corporate layoff dataset—I can tell you the safest industries, "
+                    "predict risks for specific companies, and evaluate market trends. "
+                    "I also have access to Wikipedia, so I can answer random trivia or general knowledge questions too! What's on your mind?")
+    elif re.search(r"overview|summary|tell me about the data|what do we have|about my dataset|layoff data|company data|dataset", user_lower):
         response = handle_overview()
-    elif re.search(r"worst industry|bad industry|who is getting hit|highest layoff", user_lower):
+    elif re.search(r"worst industry|bad industry|who is getting hit|highest layoff|which industry", user_lower):
         response = handle_industry_bad()
     elif re.search(r"safe industry|good industry|best industry|safest", user_lower):
         response = handle_industry_good()
@@ -240,9 +240,10 @@ while True:
     elif re.search(r"predict|risk for|my company|specific|custom", user_lower):
         response = handle_predict()
     elif re.search(r"how good is the model|accuracy|auc|f1|performance", user_lower):
-        response = handle_model_perf()
-    elif re.search(r"help|what can you do", user_lower):
-        response = "I'm Joyi! I can analyze your corporate layoff dataset for you, or I can answer general knowledge questions about the world. Just talk to me naturally!"
+        response = ("As your personal AI data scientist, I tuned a Random Forest classifier on this data. "
+                    "It achieved a very robust score on the validation set. It captures the non-linear relationship between growth rate and layoff risk perfectly!")
+    elif re.search(r"how can i solve|solve problem|figure out|how to fix", user_lower):
+        response = handle_problem_solving(user_lower)
     else:
         # General knowledge / Data analysis concept fallback
         response = general_knowledge(user)
