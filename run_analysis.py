@@ -57,13 +57,10 @@ print(f"Missing values: {train.isnull().sum().sum()}")
 print(f"Layoff rate: {train[TARGET].mean():.1%}\n")
 
 
-# ------- Q1: exploratory analysis --------------------------------------------
-# First I want to understand the data before building any models.
-# How balanced is the target? Which features actually differ between the two groups?
 
 print("--- Q1: Exploratory Analysis ---")
 
-# target distribution — simple pie + bar
+
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 vc = train[TARGET].value_counts().sort_index()
 
@@ -84,7 +81,7 @@ plt.savefig("q1_target_dist.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("  saved q1_target_dist.png")
 
-# histograms and boxplots for each numeric feature, split by layoff outcome
+
 fig, axes = plt.subplots(2, 4, figsize=(20, 10))
 
 for i, col in enumerate(NUM_COLS):
@@ -111,9 +108,6 @@ plt.tight_layout()
 plt.savefig("q1_numeric_dist.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("  saved q1_numeric_dist.png")
-
-# Mann-Whitney U test to check which features are actually different between groups
-# (non-parametric, doesn't assume normal distribution)
 print("\n  Statistical significance (Mann-Whitney U):")
 print(f"  {'Feature':<20} {'U-stat':>12} {'p-value':>12} {'sig':>5}")
 print("  " + "-" * 52)
@@ -124,7 +118,7 @@ for col in NUM_COLS:
     stars = "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else "ns"))
     print(f"  {col:<20} {u:>12.1f} {p:>12.6f} {stars:>5}")
 
-# layoff rates by industry and country
+
 fig, axes = plt.subplots(1, 2, figsize=(18, 7))
 
 ind = (train.groupby("industry")[TARGET]
@@ -151,8 +145,6 @@ plt.tight_layout()
 plt.savefig("q1_industry_country.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("\n  saved q1_industry_country.png")
-
-# correlation heatmap
 corr = train[NUM_COLS + [TARGET]].corr()
 plt.figure(figsize=(9, 7))
 mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -169,10 +161,6 @@ print("\n  Correlations with layoff_happened:")
 for feat, val in corr[TARGET].drop(TARGET).abs().sort_values(ascending=False).items():
     print(f"    {feat:<22}: {val:.4f}")
 
-
-# ------- Q2: classification model --------------------------------------------
-# Try a few different algorithms and pick the best one by AUC.
-# I'm using stratified k-fold so the class ratio stays consistent across splits.
 
 print("\n--- Q2: Building the Model ---")
 
@@ -198,8 +186,6 @@ def prepare_features(df, encoders=None, fit=True):
         enc["imp"] = imp
     else:
         df[NUM_COLS] = enc["imp"].transform(df[NUM_COLS])
-
-    # log-transform the really skewed columns to reduce influence of outliers
     for col in ["funding_amount", "employee_count", "valuation"]:
         df[col] = np.log1p(df[col].clip(lower=0))
 
@@ -253,8 +239,6 @@ best_name  = max(results, key=lambda k: results[k]["val_auc"])
 best       = results[best_name]
 best_model = best["model"]
 print(f"\n  Best: {best_name}  (AUC = {best['val_auc']:.4f})")
-
-# ROC curves for all models + confusion matrix for the winner
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 colors = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12"]
 
@@ -280,8 +264,6 @@ plt.savefig("q2_roc_cm.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("\n" + classification_report(y_val, best["preds"], target_names=["No Layoff", "Layoff"]))
 print("  saved q2_roc_cm.png")
-
-# feature importance
 if hasattr(best_model, "feature_importances_"):
     imp_vals = best_model.feature_importances_
 else:
@@ -304,8 +286,6 @@ print("  saved q2_feature_importance.png")
 print("\n  Feature ranking:")
 for _, row in fi.sort_values("Importance", ascending=False).iterrows():
     print(f"    {row['Feature']:<22}: {row['Importance']:.4f}")
-
-# threshold sensitivity — how does precision/recall change as we move the cutoff?
 thresholds = np.arange(0.30, 0.75, 0.05)
 rows = []
 for th in thresholds:
@@ -332,8 +312,6 @@ plt.tight_layout()
 plt.savefig("q2_sensitivity.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("  saved q2_sensitivity.png")
-
-# learning curve — are we overfitting? underfitting?
 train_sizes, tr_scores, val_scores = learning_curve(
     best_model, X_all, y_all, cv=5, scoring="roc_auc",
     train_sizes=np.linspace(0.1, 1.0, 10), n_jobs=-1)
@@ -355,9 +333,6 @@ plt.tight_layout()
 plt.savefig("q2_learning_curve.png", dpi=150, bbox_inches="tight")
 plt.close()
 print("  saved q2_learning_curve.png")
-
-
-# ------- Q3: predict the test set --------------------------------------------
 
 print("\n--- Q3: Predicting 200 Test Companies ---")
 
@@ -394,13 +369,9 @@ plt.close()
 print("  saved q3_predictions.png")
 
 
-# ------- Q4: deeper analysis -------------------------------------------------
-# Pairplot to see how features interact, then a career survival guide based on
-# what we found in the data.
 
 print("\n--- Q4: Deep Analysis & Career Survival Guide ---")
 
-# sample 2000 rows for the pairplot — doing all 9800 is slow and the plot gets unreadable
 sample = train.sample(min(2000, len(train)), random_state=42).copy()
 for col in CAT_COLS:
     sample[col] = LabelEncoder().fit_transform(sample[col].astype(str))
@@ -414,12 +385,12 @@ pg.figure.savefig("q4_pairplot.png", dpi=120, bbox_inches="tight")
 plt.close()
 print("  saved q4_pairplot.png")
 
-# grouped stats — what actually differs between the two groups?
+
 print("\n  Mean values by group:")
 grp = train.groupby(TARGET)[NUM_COLS].mean()
 print(grp.to_string())
 
-# career survival guide — translating the findings into actionable advice
+
 tips = {
     "Work in stable industries\n(Healthcare, Finance, Utilities)": 0.92,
     "Choose companies with moderate\nheadcount (5,000–50,000 employees)":   0.85,
@@ -447,7 +418,7 @@ plt.close()
 print("  saved q4_career_guide.png")
 
 
-# ------- done ----------------------------------------------------------------
+
 
 print("""
 All done. Output files:
