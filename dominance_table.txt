@@ -1,0 +1,8 @@
+Feature                 Perm-Imp   Impurity-Imp   Dom-Ratio
+----------------------------------------------------------
+industry	0.0450	0.1107	2.18
+country	-0.0035	0.0538	98180202.10
+funding_amount	-0.0018	0.1203	98180202.10
+employee_count	0.0030	0.1431	32.71
+growth_rate	0.0982	0.4520	1.00
+valuation	-0.0052	0.1202	98180202.10

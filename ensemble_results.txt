@@ -1,0 +1,8 @@
+Progressive Model Improvement
+=======================================================
+Configuration                               AUC     F1
+-------------------------------------------------------
+Baseline RF (τ=0.50)                     0.6487 0.4553
+Baseline RF (τ*=0.26)                    0.6487 0.4922
+Stratified Ensemble (τ=0.50)             0.8787 0.5478
+Stratified Ensemble (τ*=0.43)            0.8787 0.7214
